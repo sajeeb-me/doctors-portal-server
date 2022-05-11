@@ -15,19 +15,34 @@ async function run() {
     try {
         await client.connect();
         const serviceCollection = client.db("doctors_portal").collection("services");
+        const appointmentCollection = client.db("doctors_portal").collection("appointments");
 
+        // get data
         app.get('/service', async (req, res) => {
             const query = {};
             const cursor = serviceCollection.find(query);
             const services = await cursor.toArray();
             res.send(services)
         })
+        app.get('/appointment', async (req, res) => {
+            const query = {};
+            const cursor = appointmentCollection.find(query);
+            const appointment = await cursor.toArray();
+            res.send(appointment)
+        })
+
+        // post data
+        app.post('/appointment', async (req, res) => {
+            const data = req.body;
+            const appointment = await appointmentCollection.insertOne(data);
+            res.send(appointment)
+        })
     }
     catch (error) {
         console.error(error);
     }
 }
-run().catch(console.dir());
+run().catch(console.dir);
 
 app.get('/', (req, res) => {
     res.send('Hello from Doctor Website!')
