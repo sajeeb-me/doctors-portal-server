@@ -25,7 +25,8 @@ async function run() {
             res.send(services)
         })
         app.get('/appointment', async (req, res) => {
-            const query = {};
+            const patient = req.query.patient;
+            const query = { patient: patient };
             const cursor = appointmentCollection.find(query);
             const appointment = await cursor.toArray();
             res.send(appointment)
