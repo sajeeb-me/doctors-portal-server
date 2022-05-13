@@ -31,12 +31,35 @@ async function run() {
             const appointment = await cursor.toArray();
             res.send(appointment)
         })
+        app.get('/available', async (req, res) => {
+            const date = req.query.date || 'May 14, 2022';
+
+            // step-1: get all services
+            const services = await serviceCollection.find().toArray();
+
+            // step-2: get the appointments of the day
+            const query = { date: date };
+            const appointments = await appointmentCollection.find(query).toArray();
+
+            services.forEach(service => {
+                const serviceAppointments = appointments.filter(appointment => appointment.treatment === service.name)
+                const bookedSlots = serviceAppointments.map(book => book.slot);
+                const available = service.slots.filter(slot => !bookedSlots.includes(slot));
+                service.slots = available;
+            });
+            res.send(services);
+        })
 
         // post data
         app.post('/appointment', async (req, res) => {
             const data = req.body;
+            const query = { treatment: data.treatment, date: data.date, patient: data.patient };
+            const exist = await appointmentCollection.findOne(query);
+            if (exist) {
+                return res.send({ success: false, data: exist })
+            }
             const appointment = await appointmentCollection.insertOne(data);
-            res.send(appointment)
+            res.send({ success: true, appointment })
         })
     }
     catch (error) {
