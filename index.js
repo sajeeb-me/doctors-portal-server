@@ -6,6 +6,9 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+var nodemailer = require('nodemailer');
+const mg = require('nodemailer-mailgun-transport');
+// var sendinBlue = require('nodemailer-sendinblue-transport');
 
 app.use(cors())
 app.use(express.json())
@@ -27,6 +30,53 @@ function verifyJWT(req, res, next) {
         req.decoded = decoded;
         next();
     })
+}
+
+const auth = {
+    auth: {
+        api_key: process.env.EMAIL_SENDER_KEY,
+        domain: 'sandboxda348023111b40ef960149141f63abd3.mailgun.org'
+    }
+}
+
+const nodemailerMailgun = nodemailer.createTransport(mg(auth));
+
+// const emailSenderOptions = {
+//     auth: {
+//         apiKey: process.env.EMAIL_SENDER_KEY
+//     }
+// }
+// const transporter = nodemailer.createTransport(sendinBlue(emailSenderOptions))
+
+function sendAppointmentEmail(data) {
+    const { patient, patientName, treatment, date, slot } = data;
+
+    var email = {
+        from: process.env.EMAIL_SENDER,
+        to: patient,
+        subject: `Your Appointment for ${treatment} is on ${date} at ${slot} is Confirmed`,
+        text: `Your Appointment for ${treatment} is on ${date} at ${slot} is Confirmed`,
+        html: `
+      <div>
+        <p> Hello ${patientName}, </p>
+        <h3>Your Appointment for ${treatment} is confirmed</h3>
+        <p>Looking forward to seeing you on ${date} at ${slot}.</p>
+
+        <h3>Our Address</h3>
+        <p>Andor Killa Bandorban</p>
+        <p>Bangladesh</p>
+        <a href="https://web.programming-hero.com/">unsubscribe</a>
+      </div>
+    `
+    };
+    nodemailerMailgun.sendMail(email, (err, info) => {
+        if (err) {
+            console.log(err);
+        }
+        else {
+            console.log(info);
+        }
+    });
 }
 
 async function run() {
@@ -117,6 +167,8 @@ async function run() {
                 return res.send({ success: false, data: exist })
             }
             const appointment = await appointmentCollection.insertOne(data);
+            console.log("sending email");
+            sendAppointmentEmail(data);
             res.send({ success: true, appointment })
         })
         app.post('/doctor', verifyJWT, verifyAdmin, async (req, res) => {
@@ -191,6 +243,13 @@ async function run() {
     }
 }
 run().catch(console.dir);
+
+// for trial
+// app.post('/email', async (req, res) => {
+//     const data = req.body;
+//     sendAppointmentEmail(data);
+//     res.send({ status: true })
+// })
 
 app.get('/', (req, res) => {
     res.send('Hello from Doctor Website!')
